@@ -35,3 +35,37 @@ resource "azurerm_subnet" "workload" {
     address_prefixes = ["10.0.1.0/24"]
   
 }
+
+# Get current Azure client info (needed for Key Vault access)
+data "azurerm_client_config" "current" {}
+
+# Key Vault for storing secrets
+resource "azurerm_key_vault" "main" {
+  name = "kv-${var.project_name}-${var.environment}"
+  location = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  tenant_id = data.azurerm_client_config.current.tenant_id
+  sku_name = "standard"
+
+  # Security settings - prevents permanent deletion
+  purge_protection_enabled = false  # Set true in prod
+  soft_delete_retention_days = 7
+
+  access_policy {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+    object_id = data.azurerm_client_config.current.object_id
+
+    secret_permissions = [
+      "Get",
+      "List",
+      "Set",
+      "Delete",
+      "Purge"
+    ]
+  }
+
+  tags = var.tags
+
+}
+
+  
